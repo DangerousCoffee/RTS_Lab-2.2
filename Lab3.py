@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 from math import pi, sqrt, cos, sin
+from multiprocessing import Process
 
 def signal(n, Wm, N, step):
     signal = np.zeros(N, dtype=np.float)
@@ -58,12 +59,64 @@ def FFT(signal):
 
     return res
 
+def even_vals(signal):
+    N = len(signal)
+    if N <= 1:
+        return signal
+    divider = int(N/2)
+
+    even_arr = np.zeros(divider, dtype=complex)
+
+    for i in range(divider):
+        even_arr[i] = signal[2*i]
+
+    even_arr = even_vals(even_arr)
+
+    return even_arr
+
+def odd_vals(signal):
+    N = len(signal)
+    if N <= 1:
+        return signal
+    divider = int(N/2)
+
+    odd_arr = np.zeros(divider, dtype=complex)
+
+    for i in range(divider):
+        odd_arr[i] = signal[2*i+1]
+
+    odd_arr = odd_vals(odd_arr)
+
+    return odd_arr
+
+def even_calc(signal):
+    N = len(signal)
+    if N <= 1:
+        return signal
+    divider = int(N/2)
+
+    for i in range(divider):
+        FFT_res[i] = even_arr[i] + turn_coef(i, N) * odd_arr[i]
+
+def odd_calc(signal):
+    N = len(signal)
+    if N <= 1:
+        return signal
+    divider = int(N/2)
+
+    for i in range(divider):
+        FFT_res[i + divider] = even_arr[i] - turn_coef(i, N) * odd_arr[i]
+
 if __name__ == "__main__":
     n = 6
     Wm = 1500
     N = 1024
     step = 0.0001
     t, signal1 = signal(n, Wm, N, step)
+
+    FFT_res = np.zeros(len(signal1))
+    even_arr = even_vals(signal1)
+    odd_arr = odd_vals((signal1))
 
     signal1_complex = np.array(signal1, dtype=np.complex)
 
