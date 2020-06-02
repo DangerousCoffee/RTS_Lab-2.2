@@ -4,7 +4,7 @@ import random
 from math import pi, sqrt, cos, sin
 from multiprocessing import Process
 
-def signal(n, Wm, N, step):
+def get_signal(n, Wm, N, step):
     signal = np.zeros(N, dtype=np.float)
     t = np.arange(0, N, 1, dtype=np.float)
     for i in range(n):
@@ -60,21 +60,23 @@ def FFT(signal):
     return res
 
 def even_vals(signal):
+    global even_arr
     N = len(signal)
     if N <= 1:
         return signal
     divider = int(N/2)
 
-    even_arr = np.zeros(divider, dtype=complex)
+    even_local = np.zeros(divider, dtype=complex)
 
     for i in range(divider):
-        even_arr[i] = signal[2*i]
+        even_local[i] = signal[2*i]
 
-    even_arr = even_vals(even_arr)
+    even_local = even_vals(even_local)
 
-    return even_arr
+    even_arr = even_local
 
 def odd_vals(signal):
+    global odd_arr
     N = len(signal)
     if N <= 1:
         return signal
@@ -89,7 +91,7 @@ def odd_vals(signal):
 
     return odd_arr
 
-def even_calc(signal):
+def even_calc(signal, even_arr, odd_arr, FFT_res):
     N = len(signal)
     if N <= 1:
         return signal
@@ -98,7 +100,7 @@ def even_calc(signal):
     for i in range(divider):
         FFT_res[i] = even_arr[i] + turn_coef(i, N) * odd_arr[i]
 
-def odd_calc(signal):
+def odd_calc(signal, even_arr, odd_arr, FFT_res):
     N = len(signal)
     if N <= 1:
         return signal
@@ -112,24 +114,40 @@ if __name__ == "__main__":
     Wm = 1500
     N = 1024
     step = 0.0001
-    t, signal1 = signal(n, Wm, N, step)
+    t, signal = get_signal(n, Wm, N, step)
 
-    FFT_res = np.zeros(len(signal1))
-    even_arr = even_vals(signal1)
-    odd_arr = odd_vals((signal1))
+    FFT_res = np.zeros(len(signal))
+    even_arr = np.zeros(len(signal))
+    odd_arr = np.zeros(len(signal))
 
-    signal1_complex = np.array(signal1, dtype=np.complex)
+    task1 = Process(target=even_vals, args=(signal, ))
+    task2 = Process(target=odd_vals, args=(signal, ))
+    task1.start()
+    task2.start()
+    task1.join()
+    task2.join()
+
+    new_task1 = Process(target=even_calc, args=(signal, even_arr, odd_arr, FFT_res))
+    new_task2 = Process(target=odd_calc, args=(signal, even_arr, odd_arr, FFT_res))
+    new_task1.start()
+    new_task2.start()
+    new_task1.join()
+    new_task2.join()
+
+    print(FFT_res)
+
+    signal_complex = np.array(signal, dtype=np.complex)
 
     spectr1 = np.empty(N, dtype=np.complex)
     spectr2 = np.empty(N, dtype=np.complex)
-    spectr1 = DFT(signal1_complex)
-    spectr2 = FFT(signal1_complex)
+    spectr1 = DFT(signal_complex)
+    spectr2 = FFT(signal_complex)
     N = [i for i in range(N)]
 
     fig1, (axis1) = plt.subplots(1)
     fig1.suptitle("Signals")
     axis1.set_ylabel("signal")
-    axis1.plot(t, signal1)
+    axis1.plot(t, signal)
     axis1.grid(True)
 
     fig2, (axis1, axis2) = plt.subplots(2)
